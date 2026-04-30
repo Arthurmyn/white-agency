@@ -16,23 +16,17 @@ const DEFAULT_DB = { participants: [], voters: {} };
 const a = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ── Storage ──
-// Netlify: Upstash Redis via REST API (set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
+// Netlify: Netlify Blobs
 // Local:   data/votes.json
 
 async function loadDB() {
   if (IS_NETLIFY) {
-    const url   = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
     const fallback = loadSeedDB();
-    if (!url || !token || typeof fetch !== 'function') return fallback;
 
     try {
-      const res = await fetch(`${url}/get/votes-db`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return fallback;
-      const { result } = await res.json();
-      return result ? JSON.parse(result) : fallback;
+      const { getStore } = require('@netlify/blobs');
+      const data = await getStore('votes').get('db', { type: 'json' });
+      return data || fallback;
     } catch (err) {
       console.error('[loadDB] falling back to seed data:', err.message);
       return fallback;
@@ -49,16 +43,8 @@ async function loadDB() {
 
 async function saveDB(data) {
   if (IS_NETLIFY) {
-    const url   = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token || typeof fetch !== 'function') {
-      throw new Error('Persistent storage is not configured');
-    }
-    await fetch(`${url}/set/votes-db`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain' },
-      body: JSON.stringify(data),
-    });
+    const { getStore } = require('@netlify/blobs');
+    await getStore('votes').set('db', JSON.stringify(data));
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
   }
@@ -130,7 +116,7 @@ function createApp() {
     res.json({
       ok: true,
       netlify: IS_NETLIFY,
-      hasRedis: !!(process.env.UPSTASH_REDIS_REST_URL),
+      storage: IS_NETLIFY ? 'netlify-blobs' : 'local-json',
     });
   });
 
