@@ -57,27 +57,31 @@ function renderParticipants(participants, totalVotes) {
     const numLabel = p.number < 10 ? `0${p.number}` : `${p.number}`;
 
     card.innerHTML = `
-      <div class="card-main">
-        <div class="card-avatar">
-          ${avatarInner}
-          ${checkmark}
-        </div>
-        <div class="card-info">
-          <div class="card-meta">
-            <h3 class="card-name">${escHtml(p.name)}</h3>
-            <span class="card-badge">${numLabel}</span>
-          </div>
-          <button class="${btnClass}" ${btnDisabled} onclick="castVote(${p.id}, this)">
-            ${btnLabel}
-          </button>
-        </div>
+      <div class="card-photo">
+        ${p.photo
+          ? `<img src="${escHtml(p.photo)}" alt="${escHtml(p.name)}" loading="lazy">`
+          : `<div class="card-photo-placeholder">🎵</div>`}
+        ${isMyVote ? '<div class="card-voted-overlay">✓</div>' : ''}
       </div>
-      <div class="card-bar">
-        <div class="bar-track">
-          <div class="bar-fill" id="bar-${p.id}" style="width:${p.percentage}%"></div>
+
+      <div class="card-right">
+        <div class="card-num-badge">${numLabel}</div>
+
+        <div class="card-name-block">${escHtml(p.name)}</div>
+
+        <button class="${btnClass}" ${btnDisabled} onclick="castVote(${p.id}, this)">
+          ${btnLabel}
+        </button>
+
+        <div class="card-divider"></div>
+
+        <div class="card-progress">
+          <div class="bar-track">
+            <div class="bar-fill" id="bar-${p.id}" style="width:${p.percentage}%"></div>
+          </div>
+          <span class="bar-pct" id="pct-${p.id}">${p.percentage}%</span>
+          <span class="bar-cnt" id="cnt-${p.id}">${p.votes} г.</span>
         </div>
-        <span class="bar-pct" id="pct-${p.id}">${p.percentage}%</span>
-        <span class="bar-cnt" id="cnt-${p.id}">${p.votes} голос${voteSuffix(p.votes)}</span>
       </div>
     `;
 
