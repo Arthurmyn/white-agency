@@ -1,0 +1,504 @@
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --crimson:       #8b1a1a;
+  --crimson-light: #a82020;
+  --gold:          #c9a84c;
+  --cream:         #f5f0e8;
+  --cream-dark:    #ece4d2;
+  --text-dark:     #2c1a1a;
+  --text-mid:      #5a3a3a;
+  --shadow:        rgba(60, 10, 10, 0.18);
+  --card-bg:       rgba(255,255,255,0.92);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Raleway', sans-serif;
+  color: var(--text-dark);
+  min-height: 100vh;
+  /* Damask wallpaper tiles the whole page */
+  background-color: #f5f0e8;
+  background-image: url('assets/wallpaper.png');
+  background-size: 420px auto;
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 0 110px;
+  text-align: center;
+}
+
+/* Full-width curtains photo — multiply removes white bg */
+.curtains-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+/* ── DISCO BALL ── */
+.disco-wrap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  animation: sway 5s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes sway {
+  0%, 100% { transform: translateX(-50%) rotate(-3deg); }
+  50%       { transform: translateX(-50%) rotate(3deg); }
+}
+
+.disco-img {
+  /* scales with screen: 110px on tiny phones → 180px on desktop */
+  width: clamp(110px, 28vw, 180px);
+  height: auto;
+  display: block;
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.4));
+}
+
+/* ── HERO TEXT ── */
+.hero-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding-top: 200px;
+  /*
+    Padding tracks curtain width (≈22% of viewport each side).
+    clamp: floor 65px (tiny phones) · preferred 22.5vw · cap 170px (desktop).
+  */
+  padding-left:  clamp(65px, 22.5vw, 170px);
+  padding-right: clamp(65px, 22.5vw, 170px);
+}
+
+.event-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(1rem, 3.8vw, 1.9rem);
+  color: var(--crimson);
+  line-height: 1.35;
+  text-shadow: 1px 2px 6px rgba(255,255,255,.8);
+  margin-bottom: 10px;
+}
+
+.event-title {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  /* scales smoothly: 1.3rem floor → 6.5vw → 3.4rem cap */
+  font-size: clamp(1.3rem, 6.5vw, 3.4rem);
+  letter-spacing: 0.12em;
+  color: var(--crimson);
+  text-shadow: 2px 3px 10px rgba(255,255,255,.5), 0 1px 4px rgba(0,0,0,.12);
+  margin-bottom: 8px;
+  white-space: nowrap; /* never break mid-word */
+}
+
+.event-desc {
+  font-size: clamp(0.65rem, 1.8vw, 0.95rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+
+/* ── ROSES ── */
+.roses {
+  position: absolute;
+  bottom: 0;
+  z-index: 4;
+  width: clamp(160px, 28vw, 260px);
+  height: auto;
+  /* removes white bg from the photos */
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  user-select: none;
+}
+.roses-left  { left:  -10px; }
+.roses-right { right: -10px; }
+
+/* ── STATUS BANNER ── */
+.status-banner {
+  background: linear-gradient(135deg, #2d6a2d, #3a8a3a);
+  color: #fff;
+  text-align: center;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.status-banner.error-banner {
+  background: linear-gradient(135deg, var(--crimson), var(--crimson-light));
+}
+
+.btn-cancel-vote {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,.5);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Raleway', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.btn-cancel-vote:hover { background: rgba(255,255,255,.3); }
+
+/* ── TOTAL VOTES ── */
+.total-votes {
+  text-align: center;
+  padding: 14px 16px;
+  font-size: 1rem;
+  color: var(--text-mid);
+  letter-spacing: 0.04em;
+  background: rgba(236, 228, 210, 0.85);
+  border-bottom: 1px solid rgba(139,26,26,.1);
+  backdrop-filter: blur(4px);
+}
+.total-votes strong { color: var(--crimson); font-size: 1.2rem; }
+
+/* ── PARTICIPANTS ── */
+.participants-container {
+  max-width: 680px;
+  margin: 28px auto 52px;
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-mid);
+  font-size: 1.1rem;
+  padding: 40px;
+}
+
+/* ── PARTICIPANT CARD ── */
+.participant-card {
+  position: relative;
+  background: rgba(255,255,255,0.88);
+  border-radius: 18px;
+  box-shadow: 0 4px 22px var(--shadow);
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.participant-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px var(--shadow); }
+.participant-card.voted-card { box-shadow: 0 4px 26px rgba(201,168,76,.35); }
+
+/* Gradient left accent bar */
+.participant-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: linear-gradient(to bottom, var(--crimson) 0%, var(--gold) 100%);
+  border-radius: 18px 0 0 18px;
+  transition: width 0.2s;
+}
+.participant-card.voted-card::before {
+  width: 5px;
+  background: linear-gradient(to bottom, var(--gold), #e8c96a);
+}
+
+/* ── CARD MAIN ROW ── */
+.card-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px 12px 20px;
+}
+
+/* ── AVATAR ── */
+.card-avatar {
+  flex-shrink: 0;
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.card-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--gold) 0%, #e8c96a 40%, var(--crimson) 70%, var(--gold) 100%);
+  z-index: 0;
+}
+
+.avatar-img,
+.avatar-placeholder {
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+}
+
+.avatar-img { object-fit: cover; display: block; }
+
+.avatar-placeholder {
+  background: linear-gradient(135deg, #d8cfc0, #c5baa8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+}
+
+/* Checkmark on voted avatar */
+.avatar-check {
+  position: absolute;
+  bottom: 0; right: 0;
+  z-index: 2;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #2d7a2d;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+
+/* ── CARD INFO ── */
+.card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.card-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Number badge — small circle top-right */
+.card-badge {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--crimson);
+  color: #fff;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(139,26,26,.3);
+}
+
+/* Vote button — pill shape */
+.btn-vote {
+  align-self: flex-start;
+  background: linear-gradient(135deg, var(--crimson) 0%, #c02828 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 22px;
+  font-family: 'Raleway', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 3px 10px rgba(139,26,26,.3);
+}
+.btn-vote:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(139,26,26,.45);
+}
+.btn-vote:active:not(:disabled) { transform: translateY(0); }
+.btn-vote:disabled { background: linear-gradient(135deg, #b0a090, #c0b0a0); cursor: default; box-shadow: none; }
+.btn-vote.voted    { background: linear-gradient(135deg, #2d6a2d, #3a8a3a); box-shadow: 0 3px 10px rgba(45,106,45,.3); }
+
+/* ── VOTE BAR ── */
+.card-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 14px 20px;
+}
+
+.bar-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(0,0,0,.09);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--crimson), var(--gold));
+  border-radius: 3px;
+  transition: width 0.65s cubic-bezier(.4,0,.2,1);
+  min-width: 0;
+}
+
+.bar-pct {
+  font-family: 'Raleway', sans-serif;
+  font-weight: 700;
+  color: var(--crimson);
+  font-size: 0.88rem;
+  min-width: 36px;
+  text-align: right;
+}
+
+.bar-cnt {
+  font-size: 0.72rem;
+  color: var(--text-mid);
+  min-width: 54px;
+  text-align: right;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--text-dark);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  z-index: 999;
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show  { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.success { background: #2d6a2d; }
+.toast.error   { background: var(--crimson); }
+
+/* ── FOOTER ── */
+.site-footer {
+  text-align: center;
+  padding: 24px 16px 20px;
+  color: var(--text-mid);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  background: rgba(236, 228, 210, 0.85);
+  border-top: 1px solid rgba(139,26,26,.1);
+}
+
+.admin-link {
+  display: inline-block;
+  margin-top: 14px;
+  color: rgba(90,58,58,.35);
+  font-size: 0.72rem;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  transition: color 0.2s;
+}
+.admin-link:hover { color: var(--crimson); }
+
+/* ════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ════════════════════════════════ */
+
+/* ── Tablet / large phone (≤ 768px) ── */
+@media (max-width: 768px) {
+  .hero { min-height: 420px; padding-bottom: 100px; }
+  /* padding-left/right already handled by clamp() */
+}
+
+/* ── Standard phone (≤ 600px) ── */
+@media (max-width: 600px) {
+  .hero { min-height: 360px; padding-bottom: 88px; }
+
+  /* disco-img width handled by clamp(); adjust top padding to match */
+  .hero-content { padding-top: 150px; }
+
+  .event-title   { letter-spacing: 0.05em; }
+  .event-subtitle { font-size: clamp(0.95rem, 4vw, 1.35rem); }
+  .event-desc    { letter-spacing: 0.1em; }
+
+  .roses { width: clamp(120px, 36vw, 175px); }
+
+  /* Cards */
+  .card-avatar, .avatar-img, .avatar-placeholder { width: 62px; height: 62px; }
+  .card-main { padding: 14px 14px 10px 18px; gap: 12px; }
+  .card-bar  { padding: 0 14px 12px 18px; }
+  .card-name { font-size: 0.95rem; }
+  .btn-vote  { font-size: 0.78rem; padding: 7px 16px; }
+}
+
+/* ── Small phone: 360–390px (Galaxy S, iPhone SE 3, etc.) ── */
+@media (max-width: 390px) {
+  .hero-content { padding-top: 135px; }
+  .event-title   { letter-spacing: 0.03em; }
+  .event-subtitle { font-size: clamp(0.88rem, 3.8vw, 1.1rem); }
+}
+
+/* ── Tiny phone: ≤ 340px (old iPhone SE, small Androids) ── */
+@media (max-width: 340px) {
+  .hero-content { padding-top: 125px; }
+  .event-title   { letter-spacing: 0; }
+  /* Hide description — too cramped at this width */
+  .event-desc    { display: none; }
+  .roses { width: clamp(100px, 33vw, 130px); }
+}
+
+/* ── Landscape on phones (height ≤ 500px) ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero {
+    min-height: auto;
+    padding-bottom: 60px;
+  }
+  .hero-content { padding-top: 108px; }
+  .event-title  { font-size: clamp(1.1rem, 5vw, 2rem); letter-spacing: 0.04em; }
+  .event-subtitle { font-size: clamp(0.8rem, 2.5vw, 1rem); }
+  .roses        { width: clamp(90px, 18vw, 140px); }
+}

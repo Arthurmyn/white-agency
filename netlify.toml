@@ -1,0 +1,17 @@
+[build]
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+
+# All /api/* calls → our Express function
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/api/:splat"
+  status = 200
+
+# /admin → static admin.html
+[[redirects]]
+  from   = "/admin"
+  to     = "/admin.html"
+  status = 200

@@ -1,6 +1,7 @@
 // ── STATE ──
 let myVotedFor = null;          // participant id I voted for
 let hasVoted = false;
+let staticMode = false;
 const LS_KEY = 'voted_participant_id';
 
 // ── INIT ──
@@ -13,6 +14,7 @@ const LS_KEY = 'voted_participant_id';
 async function loadParticipants() {
   try {
     const res = await fetch('/api/participants');
+    if (!res.ok) throw new Error('API unavailable');
     const data = await res.json();
 
     myVotedFor = data.votedFor;
@@ -26,6 +28,29 @@ async function loadParticipants() {
     renderParticipants(data.participants, data.totalVotes);
     updateStatus();
   } catch (e) {
+    await loadStaticParticipants();
+  }
+}
+
+async function loadStaticParticipants() {
+  try {
+    staticMode = true;
+    const res = await fetch('data/votes.json');
+    if (!res.ok) throw new Error('Static data unavailable');
+    const data = await res.json();
+    const totalVotes = data.participants.reduce((sum, p) => sum + p.votes, 0);
+    const participants = data.participants.map(p => ({
+      ...p,
+      photo: normalizeStaticPath(p.photo),
+      percentage: totalVotes > 0 ? Math.round((p.votes / totalVotes) * 100) : 0,
+    }));
+
+    myVotedFor = null;
+    hasVoted = true;
+    renderParticipants(participants, totalVotes);
+    updateStatus();
+    showToast('Статическая версия: голосование доступно на основном сайте', 'error');
+  } catch (_) {
     document.getElementById('participantsContainer').innerHTML =
       '<div class="loading">Ошибка загрузки. Обновите страницу.</div>';
   }
@@ -108,6 +133,10 @@ function subscribeToLiveUpdates() {
 
 // ── CAST VOTE ──
 async function castVote(participantId, btn) {
+  if (staticMode) {
+    showToast('Голосование доступно только на версии с сервером', 'error');
+    return;
+  }
   if (hasVoted) return;
 
   btn.disabled = true;
@@ -177,6 +206,7 @@ function updateStatus() {
 
 // ── CANCEL VOTE ──
 async function cancelVote() {
+  if (staticMode) return;
   const btn = document.getElementById('btnCancelVote');
   btn.textContent = '...';
   btn.disabled = true;
@@ -227,6 +257,11 @@ function showToast(msg, type = '') {
 // ── HELPERS ──
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function normalizeStaticPath(path) {
+  if (!path) return path;
+  return path.startsWith('/assets/') ? path.slice(1) : path;
 }
 
 function voteSuffix(n) {
