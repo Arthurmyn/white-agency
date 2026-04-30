@@ -6,10 +6,11 @@ const { v4: uuidv4 } = require('uuid');
 const path         = require('path');
 const fs           = require('fs');
 
-const IS_NETLIFY = !!process.env.NETLIFY;
+const IS_NETLIFY = !!(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DATA_DIR   = './data';
 const DB_FILE    = path.join(DATA_DIR, 'votes.json');
 const PHOTOS_DIR = path.join(__dirname, 'public', 'assets', 'photos');
+const DEFAULT_DB = { participants: [], voters: {} };
 
 // ── Wrap async Express handlers so errors propagate to the error middleware ──
 const a = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -22,12 +23,20 @@ async function loadDB() {
   if (IS_NETLIFY) {
     const url   = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token) return { participants: [], voters: {} };
-    const res  = await fetch(`${url}/get/votes-db`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const { result } = await res.json();
-    return result ? JSON.parse(result) : { participants: [], voters: {} };
+    const fallback = loadSeedDB();
+    if (!url || !token || typeof fetch !== 'function') return fallback;
+
+    try {
+      const res = await fetch(`${url}/get/votes-db`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return fallback;
+      const { result } = await res.json();
+      return result ? JSON.parse(result) : fallback;
+    } catch (err) {
+      console.error('[loadDB] falling back to seed data:', err.message);
+      return fallback;
+    }
   }
   if (!fs.existsSync(DB_FILE)) {
     const init = { participants: [], voters: {} };
@@ -42,6 +51,9 @@ async function saveDB(data) {
   if (IS_NETLIFY) {
     const url   = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token || typeof fetch !== 'function') {
+      throw new Error('Persistent storage is not configured');
+    }
     await fetch(`${url}/set/votes-db`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain' },
@@ -49,6 +61,15 @@ async function saveDB(data) {
     });
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  }
+}
+
+function loadSeedDB() {
+  try {
+    const seedFile = path.join(__dirname, 'data', 'votes.json');
+    return JSON.parse(fs.readFileSync(seedFile, 'utf8'));
+  } catch (_) {
+    return { ...DEFAULT_DB };
   }
 }
 
