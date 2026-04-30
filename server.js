@@ -14,14 +14,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'white_story_agency';
 // Session token generated fresh each server start
 const ADMIN_SESSION_TOKEN = uuidv4();
 
-// ── Default participants ──
-const DEFAULT_PARTICIPANTS = [
-  'Александр Петров',   'Мария Иванова',    'Дмитрий Сидоров',
-  'Анна Козлова',       'Сергей Новиков',   'Елена Морозова',
-  'Михаил Волков',      'Ольга Лебедева',   'Артём Зайцев',
-  'Наталья Соколова',   'Павел Орлов',      'Юлия Попова',
-  'Иван Кузнецов',      'Виктория Смирнова','Никита Фёдоров',
-];
 
 // ── Ensure directories ──
 if (!fs.existsSync(DATA_DIR))   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -30,12 +22,7 @@ if (!fs.existsSync(PHOTOS_DIR)) fs.mkdirSync(PHOTOS_DIR, { recursive: true });
 // ── File storage helpers ──
 function loadDB() {
   if (!fs.existsSync(DB_FILE)) {
-    const initial = {
-      participants: DEFAULT_PARTICIPANTS.map((name, i) => ({
-        id: i + 1, name, number: i + 1, photo: null, votes: 0,
-      })),
-      voters: {},
-    };
+    const initial = { participants: [], voters: {} };
     saveDB(initial);
     return initial;
   }
