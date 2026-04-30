@@ -63,7 +63,11 @@ document.getElementById('btnLogout').addEventListener('click', async () => {
 // ── LOAD PARTICIPANTS ──
 async function loadParticipants() {
   const res  = await fetch('/api/admin/participants');
-  if (!res.ok) return;
+  if (!res.ok) {
+    const data = await readJsonSafe(res);
+    showToast(data.error || `Ошибка загрузки: ${res.status}`, 'err');
+    return;
+  }
   const data = await res.json();
   participants = data.participants;
   renderList();
@@ -159,11 +163,14 @@ async function saveName(id, name, row) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
+  const data = await readJsonSafe(res);
   if (res.ok) {
     const p = participants.find(p => p.id === id);
     if (p) p.name = name.trim();
     updateStats();
     flashSaved(id);
+  } else {
+    showToast(data.error || `Ошибка сохранения: ${res.status}`, 'err');
   }
 }
 
@@ -186,7 +193,7 @@ async function uploadPhoto(id, input, row) {
   form.append('photo', file);
 
   const res  = await fetch(`/api/admin/participants/${id}/photo`, { method: 'POST', body: form });
-  const data = await res.json();
+  const data = await readJsonSafe(res);
 
   photoWrap.querySelector('.p-photo-overlay').textContent = '📷';
 
@@ -199,7 +206,7 @@ async function uploadPhoto(id, input, row) {
     flashSaved(id);
     showToast('Фото загружено', 'ok');
   } else {
-    showToast('Ошибка загрузки фото', 'err');
+    showToast(data.error || `Ошибка загрузки фото: ${res.status}`, 'err');
   }
   input.value = '';
 }
@@ -211,11 +218,13 @@ async function moveParticipant(id, direction) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ direction }),
   });
-  const data = await res.json();
+  const data = await readJsonSafe(res);
   if (res.ok) {
     participants = data.participants;
     renderList();
     updateStats();
+  } else {
+    showToast(data.error || `Ошибка перемещения: ${res.status}`, 'err');
   }
 }
 
@@ -229,7 +238,7 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
   });
-  const data = await res.json();
+  const data = await readJsonSafe(res);
 
   if (res.ok) {
     participants.push(data.participant);
@@ -241,7 +250,7 @@ document.getElementById('btnAdd').addEventListener('click', async () => {
       document.getElementById('participantsList').lastElementChild?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   } else {
-    showToast('Ошибка добавления', 'err');
+    showToast(data.error || `Ошибка добавления: ${res.status}`, 'err');
   }
 });
 
@@ -262,13 +271,14 @@ document.getElementById('deleteConfirm').addEventListener('click', async () => {
   document.getElementById('deleteModal').style.display = 'none';
 
   const res = await fetch(`/api/admin/participants/${pendingDeleteId}`, { method: 'DELETE' });
+  const data = await readJsonSafe(res);
   if (res.ok) {
     participants = participants.filter(p => p.id !== pendingDeleteId);
     renderList();
     updateStats();
     showToast('Участник удалён', 'ok');
   } else {
-    showToast('Ошибка удаления', 'err');
+    showToast(data.error || `Ошибка удаления: ${res.status}`, 'err');
   }
   pendingDeleteId = null;
 });
@@ -285,13 +295,14 @@ document.getElementById('resetCancel').addEventListener('click', () => {
 document.getElementById('resetConfirm').addEventListener('click', async () => {
   document.getElementById('resetModal').style.display = 'none';
   const res = await fetch('/api/admin/reset', { method: 'POST' });
+  const data = await readJsonSafe(res);
   if (res.ok) {
     participants.forEach(p => { p.votes = 0; });
     renderList();
     updateStats();
     showToast('Голоса сброшены', 'ok');
   } else {
-    showToast('Ошибка сброса', 'err');
+    showToast(data.error || `Ошибка сброса: ${res.status}`, 'err');
   }
 });
 
@@ -317,4 +328,12 @@ function escHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function readJsonSafe(res) {
+  try {
+    return await res.json();
+  } catch (_) {
+    return {};
+  }
 }

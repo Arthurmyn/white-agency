@@ -5,6 +5,7 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "nft"
+  included_files = ["data/votes.json"]
 
 # All /api/* calls → our Express function (no :splat — preserves full path)
 [[redirects]]
