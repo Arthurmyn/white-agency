@@ -1,23 +1,33 @@
-const express     = require('express');
+const express      = require('express');
 const cookieParser = require('cookie-parser');
-const multer      = require('multer');
-const crypto      = require('crypto');
+const multer       = require('multer');
+const crypto       = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const path        = require('path');
-const fs          = require('fs');
+const path         = require('path');
+const fs           = require('fs');
 
-const IS_NETLIFY  = !!process.env.NETLIFY;
-const DATA_DIR    = './data';
-const DB_FILE     = path.join(DATA_DIR, 'votes.json');
-const PHOTOS_DIR  = path.join(__dirname, 'public', 'assets', 'photos');
+const IS_NETLIFY = !!process.env.NETLIFY;
+const DATA_DIR   = './data';
+const DB_FILE    = path.join(DATA_DIR, 'votes.json');
+const PHOTOS_DIR = path.join(__dirname, 'public', 'assets', 'photos');
 
-// ── Storage: file locally, Netlify Blobs in production ──
+// ── Wrap async Express handlers so errors propagate to the error middleware ──
+const a = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+// ── Storage ──
+// Netlify: Upstash Redis via REST API (set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
+// Local:   data/votes.json
 
 async function loadDB() {
   if (IS_NETLIFY) {
-    const { getStore } = require('@netlify/blobs');
-    const data = await getStore('votes').get('db', { type: 'json' });
-    return data || { participants: [], voters: {} };
+    const url   = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) return { participants: [], voters: {} };
+    const res  = await fetch(`${url}/get/votes-db`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const { result } = await res.json();
+    return result ? JSON.parse(result) : { participants: [], voters: {} };
   }
   if (!fs.existsSync(DB_FILE)) {
     const init = { participants: [], voters: {} };
@@ -30,32 +40,27 @@ async function loadDB() {
 
 async function saveDB(data) {
   if (IS_NETLIFY) {
-    const { getStore } = require('@netlify/blobs');
-    await getStore('votes').set('db', JSON.stringify(data));
+    const url   = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    await fetch(`${url}/set/votes-db`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data),
+    });
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
   }
 }
 
-function nextId(list) {
-  return list.length ? Math.max(...list.map(p => p.id)) + 1 : 1;
-}
-function reNumber(list) {
-  list.forEach((p, i) => { p.number = i + 1; });
-}
+function nextId(list) { return list.length ? Math.max(...list.map(p => p.id)) + 1 : 1; }
+function reNumber(list) { list.forEach((p, i) => { p.number = i + 1; }); }
 
-// ── createApp — used both locally and by the Netlify Function ──
-
+// ── createApp ──
 function createApp() {
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'white_story_agency';
-
-  // Deterministic token — stable across serverless cold starts
   const ADMIN_SESSION_TOKEN = crypto
-    .createHmac('sha256', ADMIN_PASSWORD)
-    .update('admin-session-v1')
-    .digest('hex');
+    .createHmac('sha256', ADMIN_PASSWORD).update('admin-session-v1').digest('hex');
 
-  // ── Multer: disk locally, memory on Netlify ──
   const upload = multer({
     storage: IS_NETLIFY
       ? multer.memoryStorage()
@@ -75,14 +80,13 @@ function createApp() {
   app.use(express.json());
   app.use(cookieParser());
 
-  // Static files only in local mode (Netlify CDN handles them in production)
   if (!IS_NETLIFY) {
     app.use(express.static(path.join(__dirname, 'public')));
     app.get('/admin', (_req, res) =>
       res.sendFile(path.join(__dirname, 'public', 'admin.html')));
   }
 
-  // Assign voter ID cookie
+  // Voter ID cookie
   app.use((req, res, next) => {
     if (!req.cookies.voter_id) {
       const id = uuidv4();
@@ -100,9 +104,18 @@ function createApp() {
     next();
   }
 
+  // ── Health check (debug) ──
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      ok: true,
+      netlify: IS_NETLIFY,
+      hasRedis: !!(process.env.UPSTASH_REDIS_REST_URL),
+    });
+  });
+
   // ── PUBLIC API ──
 
-  app.get('/api/participants', async (req, res) => {
+  app.get('/api/participants', a(async (req, res) => {
     const db    = await loadDB();
     const total = db.participants.reduce((s, p) => s + p.votes, 0);
     const votedFor = db.voters[req.cookies.voter_id] ?? null;
@@ -115,54 +128,35 @@ function createApp() {
       totalVotes: total,
       votedFor,
     });
-  });
+  }));
 
-  app.post('/api/vote', async (req, res) => {
+  app.post('/api/vote', a(async (req, res) => {
     const voterId = req.cookies.voter_id;
     const { participantId } = req.body;
     if (!participantId || typeof participantId !== 'number')
       return res.status(400).json({ error: 'Invalid participant ID' });
-
     const db = await loadDB();
     const p  = db.participants.find(p => p.id === participantId);
     if (!p) return res.status(404).json({ error: 'Participant not found' });
     if (db.voters[voterId] !== undefined)
       return res.status(409).json({ error: 'already_voted', votedFor: db.voters[voterId] });
-
     db.voters[voterId] = participantId;
     p.votes += 1;
     await saveDB(db);
     res.json({ success: true, votedFor: participantId });
-  });
+  }));
 
-  app.delete('/api/vote', async (req, res) => {
+  app.delete('/api/vote', a(async (req, res) => {
     const voterId = req.cookies.voter_id;
     const db = await loadDB();
     if (db.voters[voterId] === undefined)
       return res.status(404).json({ error: 'no_vote' });
-
     const p = db.participants.find(p => p.id === db.voters[voterId]);
     if (p && p.votes > 0) p.votes -= 1;
     delete db.voters[voterId];
     await saveDB(db);
     res.json({ success: true });
-  });
-
-  // Serve photos stored in Netlify Blobs
-  app.get('/api/photos/:key', async (req, res) => {
-    if (!IS_NETLIFY) return res.status(404).send('Use /assets/photos/ locally');
-    try {
-      const { getStore } = require('@netlify/blobs');
-      const result = await getStore('photos')
-        .getWithMetadata(req.params.key, { type: 'arrayBuffer' });
-      if (!result?.data) return res.status(404).send('Not found');
-      res.setHeader('Content-Type', result.metadata?.contentType || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      res.send(Buffer.from(result.data));
-    } catch {
-      res.status(500).send('Error');
-    }
-  });
+  }));
 
   // ── ADMIN AUTH ──
 
@@ -184,23 +178,23 @@ function createApp() {
 
   // ── ADMIN PARTICIPANTS ──
 
-  app.get('/api/admin/participants', requireAdmin, async (_req, res) => {
+  app.get('/api/admin/participants', requireAdmin, a(async (_req, res) => {
     const db = await loadDB();
     res.json({ participants: db.participants });
-  });
+  }));
 
-  app.post('/api/admin/participants', requireAdmin, async (req, res) => {
+  app.post('/api/admin/participants', requireAdmin, a(async (req, res) => {
     const { name } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
-    const db  = await loadDB();
+    const db   = await loadDB();
     const newP = { id: nextId(db.participants), name: name.trim(),
                    number: db.participants.length + 1, photo: null, votes: 0 };
     db.participants.push(newP);
     await saveDB(db);
     res.json({ success: true, participant: newP });
-  });
+  }));
 
-  app.patch('/api/admin/participants/:id', requireAdmin, async (req, res) => {
+  app.patch('/api/admin/participants/:id', requireAdmin, a(async (req, res) => {
     const id = parseInt(req.params.id);
     if (!req.body.name?.trim()) return res.status(400).json({ error: 'Name required' });
     const db = await loadDB();
@@ -209,39 +203,30 @@ function createApp() {
     p.name = req.body.name.trim();
     await saveDB(db);
     res.json({ success: true });
-  });
+  }));
 
-  app.delete('/api/admin/participants/:id', requireAdmin, async (req, res) => {
+  app.delete('/api/admin/participants/:id', requireAdmin, a(async (req, res) => {
     const id  = parseInt(req.params.id);
     const db  = await loadDB();
     const idx = db.participants.findIndex(p => p.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Not found' });
-
     const p = db.participants[idx];
     if (!IS_NETLIFY && p.photo) {
       const f = path.join(__dirname, 'public', p.photo);
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
-    if (IS_NETLIFY) {
-      try {
-        const { getStore } = require('@netlify/blobs');
-        await getStore('photos').delete(`participant-${id}`);
-      } catch (_) {}
-    }
-
     db.participants.splice(idx, 1);
     reNumber(db.participants);
     Object.keys(db.voters).forEach(v => { if (db.voters[v] === id) delete db.voters[v]; });
     await saveDB(db);
     res.json({ success: true });
-  });
+  }));
 
-  app.post('/api/admin/participants/:id/move', requireAdmin, async (req, res) => {
+  app.post('/api/admin/participants/:id/move', requireAdmin, a(async (req, res) => {
     const id  = parseInt(req.params.id);
     const db  = await loadDB();
     const idx = db.participants.findIndex(p => p.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Not found' });
-
     const swap = req.body.direction === 'up' ? idx - 1 : idx + 1;
     if (swap >= 0 && swap < db.participants.length) {
       [db.participants[idx], db.participants[swap]] =
@@ -250,40 +235,44 @@ function createApp() {
     }
     await saveDB(db);
     res.json({ success: true, participants: db.participants });
-  });
+  }));
 
   app.post('/api/admin/participants/:id/photo', requireAdmin,
-    upload.single('photo'), async (req, res) => {
+    upload.single('photo'), a(async (req, res) => {
       const id = parseInt(req.params.id);
       const db = await loadDB();
       const p  = db.participants.find(p => p.id === id);
       if (!p)        return res.status(404).json({ error: 'Not found' });
       if (!req.file) return res.status(400).json({ error: 'No file' });
-
-      if (IS_NETLIFY) {
-        const { getStore } = require('@netlify/blobs');
-        const key = `participant-${id}`;
-        await getStore('photos').set(key, req.file.buffer,
-          { contentType: req.file.mimetype });
-        p.photo = `/api/photos/${key}`;
-      } else {
+      if (!IS_NETLIFY) {
         if (p.photo?.includes('/photos/')) {
           const old = path.join(__dirname, 'public', p.photo);
           if (fs.existsSync(old)) fs.unlinkSync(old);
         }
         p.photo = `/assets/photos/${req.file.filename}`;
+        await saveDB(db);
+        res.json({ success: true, photo: p.photo });
+      } else {
+        // On Netlify: photo upload not available — use GitHub to add photos
+        res.status(501).json({
+          error: 'Загрузка фото через интерфейс недоступна на Netlify. Добавьте фото через GitHub репозиторий в папку public/assets/photos/ и укажите путь /assets/photos/имя_файла.jpg',
+        });
       }
+    }));
 
-      await saveDB(db);
-      res.json({ success: true, photo: p.photo });
-    });
-
-  app.post('/api/admin/reset', requireAdmin, async (_req, res) => {
+  app.post('/api/admin/reset', requireAdmin, a(async (_req, res) => {
     const db = await loadDB();
     db.voters = {};
     db.participants.forEach(p => { p.votes = 0; });
     await saveDB(db);
     res.json({ success: true });
+  }));
+
+  // ── Global error handler ──
+  app.use((err, req, res, _next) => {
+    console.error('[Express error]', err.message, err.stack);
+    if (!res.headersSent)
+      res.status(500).json({ error: err.message || 'Internal server error' });
   });
 
   return app;
