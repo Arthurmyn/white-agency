@@ -62,6 +62,25 @@ function loadSeedDB() {
 function nextId(list) { return list.length ? Math.max(...list.map(p => p.id)) + 1 : 1; }
 function reNumber(list) { list.forEach((p, i) => { p.number = i + 1; }); }
 
+function imageExtension(mimetype) {
+  const known = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  };
+  return known[mimetype] || 'jpg';
+}
+
+function bufferToArrayBuffer(buffer) {
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+}
+
+function blobPhotoKey(photoPath) {
+  if (!photoPath?.startsWith('/api/photos/')) return null;
+  return decodeURIComponent(photoPath.replace('/api/photos/', '').split('?')[0]);
+}
+
 // ── createApp ──
 function createApp() {
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'white_story_agency';
@@ -167,6 +186,20 @@ function createApp() {
     res.json({ success: true });
   }));
 
+  app.get('/api/photos/:key', a(async (req, res) => {
+    if (!IS_NETLIFY) return res.status(404).send('Use /assets/photos/ locally');
+
+    const { getStore } = require('@netlify/blobs');
+    const result = await getStore('photos')
+      .getWithMetadata(req.params.key, { type: 'arrayBuffer' });
+
+    if (!result?.data) return res.status(404).send('Not found');
+
+    res.setHeader('Content-Type', result.metadata?.contentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(Buffer.from(result.data));
+  }));
+
   // ── ADMIN AUTH ──
 
   app.post('/api/admin/login', (req, res) => {
@@ -224,6 +257,13 @@ function createApp() {
       const f = path.join(__dirname, 'public', p.photo);
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
+    if (IS_NETLIFY) {
+      const key = blobPhotoKey(p.photo);
+      if (key) {
+        const { getStore } = require('@netlify/blobs');
+        await getStore('photos').delete(key);
+      }
+    }
     db.participants.splice(idx, 1);
     reNumber(db.participants);
     Object.keys(db.voters).forEach(v => { if (db.voters[v] === id) delete db.voters[v]; });
@@ -262,10 +302,19 @@ function createApp() {
         await saveDB(db);
         res.json({ success: true, photo: p.photo });
       } else {
-        // On Netlify: photo upload not available — use GitHub to add photos
-        res.status(501).json({
-          error: 'Загрузка фото через интерфейс недоступна на Netlify. Добавьте фото через GitHub репозиторий в папку public/assets/photos/ и укажите путь /assets/photos/имя_файла.jpg',
+        const { getStore } = require('@netlify/blobs');
+        const photos = getStore('photos');
+        const oldKey = blobPhotoKey(p.photo);
+        const key = `participant-${id}-${Date.now()}.${imageExtension(req.file.mimetype)}`;
+
+        await photos.set(key, bufferToArrayBuffer(req.file.buffer), {
+          metadata: { contentType: req.file.mimetype },
         });
+        if (oldKey) await photos.delete(oldKey);
+
+        p.photo = `/api/photos/${encodeURIComponent(key)}`;
+        await saveDB(db);
+        res.json({ success: true, photo: p.photo });
       }
     }));
 
