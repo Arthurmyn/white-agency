@@ -1,8 +1,10 @@
 [build]
   publish = "public"
+  command = "npm install"
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "nft"
 
 # All /api/* calls → our Express function (no :splat — preserves full path)
 [[redirects]]
