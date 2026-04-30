@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Админ — Музыкальная битва</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- ── LOGIN SCREEN ── -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-icon">🎭</div>
+      <h1 class="login-title">Панель управления</h1>
+      <p class="login-sub">Музыкальная битва</p>
+      <form id="loginForm">
+        <div class="input-wrap">
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="Введите пароль"
+            autocomplete="current-password"
+          />
+          <button type="submit" id="loginBtn">Войти</button>
+        </div>
+        <p class="login-error" id="loginError"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ADMIN PANEL ── -->
+  <div class="admin-wrap" id="adminPanel" style="display:none">
+
+    <header class="admin-header">
+      <div class="header-left">
+        <span class="header-logo">🎭</span>
+        <div>
+          <h1 class="header-title">Участники</h1>
+          <p class="header-sub">Музыкальная битва</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn-reset" id="btnReset">Сбросить голоса</button>
+        <button class="btn-logout" id="btnLogout">Выйти</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat">
+          <span class="stat-num" id="statParticipants">—</span>
+          <span class="stat-label">участников</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num" id="statVotes">—</span>
+          <span class="stat-label">голосов</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num" id="statLeader">—</span>
+          <span class="stat-label">лидер</span>
+        </div>
+      </div>
+
+      <!-- Participants list -->
+      <div class="section-header">
+        <h2 class="section-title">Список участников</h2>
+        <button class="btn-add" id="btnAdd">+ Добавить</button>
+      </div>
+
+      <div class="participants-list" id="participantsList"></div>
+
+    </main>
+
+  </div>
+
+  <!-- ── RESET CONFIRM MODAL ── -->
+  <div class="modal-overlay" id="resetModal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-icon">⚠️</div>
+      <h2 class="modal-title">Сбросить все голоса?</h2>
+      <p class="modal-text">Это действие нельзя отменить. Все голоса будут удалены, счётчики обнулятся.</p>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="resetCancel">Отмена</button>
+        <button class="btn-modal-confirm" id="resetConfirm">Да, сбросить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DELETE CONFIRM MODAL ── -->
+  <div class="modal-overlay" id="deleteModal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-icon">🗑</div>
+      <h2 class="modal-title">Удалить участника?</h2>
+      <p class="modal-text">Участник <strong id="deleteName"></strong> будет удалён вместе со всеми голосами за него.</p>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="deleteCancel">Отмена</button>
+        <button class="btn-modal-confirm" id="deleteConfirm">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

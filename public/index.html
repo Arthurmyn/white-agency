@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Голосование — Музыкальная битва</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HERO HEADER -->
+  <header class="hero">
+
+    <!-- Real curtains photo (white bg removed via mix-blend-mode) -->
+    <img class="curtains-img" src="assets/curtains.png" alt="" aria-hidden="true" />
+
+    <!-- Real disco ball with chain -->
+    <div class="disco-wrap">
+      <img class="disco-img" src="assets/disco-ball.png" alt="" aria-hidden="true" />
+    </div>
+
+    <!-- Text -->
+    <div class="hero-content">
+      <p class="event-subtitle">Бар, книги<br>и пару аккордов</p>
+      <h1 class="event-title">ГОЛОСОВАНИЕ</h1>
+      <p class="event-desc">участники музыкальной битвы</p>
+    </div>
+
+    <!-- Real rose bouquets -->
+    <img class="roses roses-left"  src="assets/roses-left.png"  alt="" aria-hidden="true" />
+    <img class="roses roses-right" src="assets/roses-right.png" alt="" aria-hidden="true" />
+
+  </header>
+
+  <!-- VOTE STATUS BANNER -->
+  <div class="status-banner" id="statusBanner" style="display:none;">
+    <span id="statusText"></span>
+    <button class="btn-cancel-vote" id="btnCancelVote" onclick="cancelVote()">Отменить выбор</button>
+  </div>
+
+  <!-- TOTAL VOTES -->
+  <div class="total-votes">
+    Всего голосов: <strong id="totalVotes">0</strong>
+  </div>
+
+  <!-- PARTICIPANTS -->
+  <main class="participants-container" id="participantsContainer">
+    <div class="loading">Загрузка участников…</div>
+  </main>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <footer class="site-footer">
+    <p>Каждый гость может проголосовать только один раз</p>
+    <a href="/admin" class="admin-link">Войти как админ</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
