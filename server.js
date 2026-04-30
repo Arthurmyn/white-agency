@@ -44,7 +44,12 @@ async function loadDB() {
 async function saveDB(data) {
   if (IS_NETLIFY) {
     const { getStore } = require('@netlify/blobs');
-    await getStore('votes').set('db', JSON.stringify(data));
+    try {
+      await getStore('votes').set('db', JSON.stringify(data));
+    } catch (err) {
+      console.error('[saveDB] blobs write failed:', err.message, err.stack);
+      throw new Error('Blobs write error: ' + err.message);
+    }
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
   }
@@ -131,13 +136,29 @@ function createApp() {
   }
 
   // ── Health check (debug) ──
-  app.get('/api/health', (_req, res) => {
+  app.get('/api/health', a(async (_req, res) => {
+    let blobsStatus = 'n/a';
+    let blobsError  = null;
+    if (IS_NETLIFY) {
+      try {
+        const { getStore } = require('@netlify/blobs');
+        const store = getStore('votes');
+        await store.set('health-ping', 'ok');
+        const val = await store.get('health-ping');
+        blobsStatus = val === 'ok' ? 'write+read ok' : `unexpected: ${val}`;
+      } catch (err) {
+        blobsStatus = 'error';
+        blobsError  = err.message;
+      }
+    }
     res.json({
       ok: true,
       netlify: IS_NETLIFY,
       storage: IS_NETLIFY ? 'netlify-blobs' : 'local-json',
+      blobs: blobsStatus,
+      blobsError,
     });
-  });
+  }));
 
   // ── PUBLIC API ──
 
