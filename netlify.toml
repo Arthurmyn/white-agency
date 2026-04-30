@@ -4,10 +4,10 @@
 [functions]
   directory = "netlify/functions"
 
-# All /api/* calls → our Express function
+# All /api/* calls → our Express function (no :splat — preserves full path)
 [[redirects]]
   from   = "/api/*"
-  to     = "/.netlify/functions/api/:splat"
+  to     = "/.netlify/functions/api"
   status = 200
 
 # /admin → static admin.html
