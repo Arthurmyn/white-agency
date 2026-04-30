@@ -125,7 +125,8 @@ function createApp() {
   app.get('/api/participants', a(async (req, res) => {
     const db    = await loadDB();
     const total = db.participants.reduce((s, p) => s + p.votes, 0);
-    const votedFor = db.voters[req.cookies.voter_id] ?? null;
+    const storedVote = db.voters[req.cookies.voter_id];
+    const votedFor = db.participants.some(p => p.id === storedVote) ? storedVote : null;
     res.json({
       participants: db.participants.map(p => ({
         id: p.id, name: p.name, number: p.number, photo: p.photo,
@@ -145,8 +146,9 @@ function createApp() {
     const db = await loadDB();
     const p  = db.participants.find(p => p.id === participantId);
     if (!p) return res.status(404).json({ error: 'Participant not found' });
-    if (db.voters[voterId] !== undefined)
+    if (db.voters[voterId] !== undefined && db.participants.some(p => p.id === db.voters[voterId]))
       return res.status(409).json({ error: 'already_voted', votedFor: db.voters[voterId] });
+    if (db.voters[voterId] !== undefined) delete db.voters[voterId];
     db.voters[voterId] = participantId;
     p.votes += 1;
     await saveDB(db);

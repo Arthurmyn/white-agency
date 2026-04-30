@@ -22,6 +22,10 @@ async function loadParticipants() {
     // Also check localStorage as fallback (for incognito reloads etc.)
     const lsVote = localStorage.getItem(LS_KEY);
     if (lsVote && !myVotedFor) myVotedFor = parseInt(lsVote, 10);
+    if (!data.participants.some(p => p.id === myVotedFor)) {
+      myVotedFor = null;
+      localStorage.removeItem(LS_KEY);
+    }
 
     hasVoted = !!myVotedFor;
 
@@ -172,6 +176,16 @@ async function castVote(participantId, btn) {
       showToast('Ваш голос принят! Спасибо!', 'success');
     } else if (data.error === 'already_voted') {
       myVotedFor = data.votedFor;
+      const card = document.getElementById(`card-${myVotedFor}`);
+      if (!card) {
+        myVotedFor = null;
+        hasVoted = false;
+        localStorage.removeItem(LS_KEY);
+        btn.disabled = false;
+        btn.textContent = 'Проголосовать';
+        showToast('Старый голос сброшен. Попробуйте ещё раз.', 'error');
+        return;
+      }
       hasVoted = true;
       localStorage.setItem(LS_KEY, String(data.votedFor));
       updateStatus();
@@ -194,10 +208,17 @@ function updateStatus() {
   const banner = document.getElementById('statusBanner');
   const text   = document.getElementById('statusText');
   if (hasVoted && myVotedFor) {
+    const card = document.getElementById(`card-${myVotedFor}`);
+    const name = card?.querySelector('.card-name, .card-name-block')?.textContent;
+    if (!name) {
+      myVotedFor = null;
+      hasVoted = false;
+      localStorage.removeItem(LS_KEY);
+      banner.style.display = 'none';
+      return;
+    }
     banner.style.display = '';
     banner.classList.remove('error-banner');
-    const card = document.getElementById(`card-${myVotedFor}`);
-    const name = card ? card.querySelector('.card-name')?.textContent : 'участника';
     text.textContent = `✓ Вы проголосовали за: ${name}`;
   } else {
     banner.style.display = 'none';
