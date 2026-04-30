@@ -88,9 +88,10 @@ function blobPhotoKey(photoPath) {
 
 // ── createApp ──
 function createApp() {
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'white_story_agency';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const sessionSecret = ADMIN_PASSWORD || crypto.randomBytes(32).toString('hex');
   const ADMIN_SESSION_TOKEN = crypto
-    .createHmac('sha256', ADMIN_PASSWORD).update('admin-session-v1').digest('hex');
+    .createHmac('sha256', sessionSecret).update('admin-session-v1').digest('hex');
 
   const upload = multer({
     storage: IS_NETLIFY
@@ -224,6 +225,8 @@ function createApp() {
   // ── ADMIN AUTH ──
 
   app.post('/api/admin/login', (req, res) => {
+    if (!ADMIN_PASSWORD)
+      return res.status(503).json({ error: 'ADMIN_PASSWORD не настроен' });
     if (req.body.password !== ADMIN_PASSWORD)
       return res.status(401).json({ error: 'Неверный пароль' });
     res.cookie('admin_session', ADMIN_SESSION_TOKEN, {
@@ -366,6 +369,6 @@ if (!IS_NETLIFY) {
   app.listen(PORT, () => {
     console.log(`\n✅  Сайт:    http://localhost:${PORT}`);
     console.log(`🔧  Админка: http://localhost:${PORT}/admin`);
-    console.log(`🔑  Пароль:  ${process.env.ADMIN_PASSWORD || 'white_story_agency'}\n`);
+    console.log(`🔑  ADMIN_PASSWORD: ${process.env.ADMIN_PASSWORD ? 'настроен' : 'не настроен'}\n`);
   });
 }

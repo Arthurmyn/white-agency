@@ -1,15 +1,4 @@
 {
-  "participants": [
-    { "id": 1,  "name": "Участник 1",  "number": 1,  "photo": null, "votes": 0 },
-    { "id": 2,  "name": "Участник 2",  "number": 2,  "photo": null, "votes": 0 },
-    { "id": 3,  "name": "Участник 3",  "number": 3,  "photo": null, "votes": 0 },
-    { "id": 4,  "name": "Участник 4",  "number": 4,  "photo": null, "votes": 0 },
-    { "id": 5,  "name": "Участник 5",  "number": 5,  "photo": null, "votes": 0 },
-    { "id": 6,  "name": "Участник 6",  "number": 6,  "photo": null, "votes": 0 },
-    { "id": 7,  "name": "Участник 7",  "number": 7,  "photo": null, "votes": 0 },
-    { "id": 8,  "name": "Участник 8",  "number": 8,  "photo": null, "votes": 0 },
-    { "id": 9,  "name": "Участник 9",  "number": 9,  "photo": null, "votes": 0 },
-    { "id": 10, "name": "Участник 10", "number": 10, "photo": null, "votes": 0 }
-  ],
+  "participants": [],
   "voters": {}
 }
